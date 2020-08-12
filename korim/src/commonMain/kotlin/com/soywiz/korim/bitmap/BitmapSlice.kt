@@ -31,7 +31,13 @@ fun BmpSlice.getIntBounds(out: RectangleInt = RectangleInt()) = out.setTo(left, 
 
 fun BmpSlice.extract(): Bitmap = bmp.extract(left, top, width, height)
 
-class BitmapSlice<out T : Bitmap>(override val bmp: T, val bounds: RectangleInt, override val name: String = "unknown", rotated: Boolean = false) : BmpSlice, Extra by Extra.Mixin() {
+data class BitmapSlice<out T : Bitmap>(
+    override val bmp: T,
+    val bounds: RectangleInt,
+    override val name: String = "unknown",
+    override val rotated: Boolean = false,
+    override val rotatedAngle: Int = 0
+) : BmpSlice, Extra by Extra.Mixin() {
 	val premultiplied get() = bmp.premultiplied
 	override var parent: Any? = null
 
@@ -48,6 +54,7 @@ class BitmapSlice<out T : Bitmap>(override val bmp: T, val bounds: RectangleInt,
 	private val bl = Point(tl.x, br.y)
 
 	private val points = arrayOf(tl, tr, br, bl)
+    // @TODO: compute right rotatedAngle
 	private val offset = if (rotated) 1 else 0
 
 	private val p0 = points.getCyclic(offset + 0)
@@ -69,12 +76,12 @@ class BitmapSlice<out T : Bitmap>(override val bmp: T, val bounds: RectangleInt,
 
 	fun extract(): T = bmp.extract(bounds.x, bounds.y, bounds.width, bounds.height)
 
-	fun sliceWithBounds(left: Int, top: Int, right: Int, bottom: Int): BitmapSlice<T> =
-		BitmapSlice(bmp, createRectangleInt(bounds.left, bounds.top, bounds.right, bounds.bottom, left, top, right, bottom))
+	fun sliceWithBounds(left: Int, top: Int, right: Int, bottom: Int, name: String = "unknown"): BitmapSlice<T> =
+		BitmapSlice(bmp, createRectangleInt(bounds.left, bounds.top, bounds.right, bounds.bottom, left, top, right, bottom), name = name)
 
-	fun sliceWithSize(x: Int, y: Int, width: Int, height: Int): BitmapSlice<T> = sliceWithBounds(x, y, x + width, y + height)
-	fun slice(rect: RectangleInt): BitmapSlice<T> = sliceWithBounds(rect.left, rect.top, rect.right, rect.bottom)
-	fun slice(rect: Rectangle): BitmapSlice<T> = slice(rect.toInt())
+	fun sliceWithSize(x: Int, y: Int, width: Int, height: Int, name: String = "unknown"): BitmapSlice<T> = sliceWithBounds(x, y, x + width, y + height, name)
+	fun slice(rect: RectangleInt, name: String = "unknown"): BitmapSlice<T> = sliceWithBounds(rect.left, rect.top, rect.right, rect.bottom, name)
+	fun slice(rect: Rectangle, name: String = "unknown"): BitmapSlice<T> = slice(rect.toInt(), name)
 
     fun split(width: Int, height: Int): List<BitmapSlice<T>> {
         val self = this
@@ -88,9 +95,6 @@ class BitmapSlice<out T : Bitmap>(override val bmp: T, val bounds: RectangleInt,
             }
         }
     }
-
-	override val rotated: Boolean = false
-	override val rotatedAngle: Int = 0
 
 	override fun toString(): String = "BitmapSlice($name:${SizeInt(bounds.width, bounds.height)})"
 }
